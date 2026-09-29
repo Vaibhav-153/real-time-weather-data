@@ -1,18 +1,9 @@
-# Ignore Operating System files
+.env
+.env.local
+.vercel/
+node_modules/
+*.log
 .DS_Store
 Thumbs.db
-
-# Ignore IDE and editor-specific folders
 .vscode/
 .idea/
-
-# Ignore dependency directories (good practice for future expansion)
-node_modules/
-
-# Ignore log files
-*.log
-
-# Ignore files with sensitive information, like environment variables
-# This is where you would put your API keys in a real-world application.
-.env
-.vercel

@@ -3,33 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Check current weather by city or browser location.">
     <title>Dynamic Weather Dashboard</title>
     <link rel="icon" href="weather_icon.png" type="image/png">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
+    <main class="container">
         <header>
             <h1>Dynamic Weather Dashboard</h1>
-            <p>Enter a city to get real-time weather updates</p>
+            <p>Search a city or use your current location.</p>
         </header>
 
-        <section class="search-section">
-            <div class="input-group">
-                <input type="text" id="cityInput" placeholder="Enter city name (e.g., London)" aria-label="City name input">
-                <button id="searchBtn" aria-label="Search weather">Search</button>
-                <button id="geoBtn" aria-label="Use current location">📍 My Location</button>
+        <section class="search-section" aria-label="Weather search">
+            <form id="weatherForm" class="input-group">
+                <label class="sr-only" for="cityInput">City name</label>
+                <input
+                    type="text"
+                    id="cityInput"
+                    name="city"
+                    placeholder="Enter city name (e.g., London)"
+                    autocomplete="off"
+                    maxlength="100"
+                >
+                <button id="searchBtn" type="submit">Search</button>
+                <button id="geoBtn" type="button">📍 My Location</button>
+            </form>
+
+            <div id="loading" class="loading hidden" role="status" aria-live="polite">
+                Loading weather data...
             </div>
-            <div id="loading" class="loading hidden">Loading weather data...</div>
-            <div id="error" class="error hidden"></div>
+            <div id="error" class="error hidden" role="alert"></div>
         </section>
 
-        <section id="weatherSection" class="weather-section hidden">
-            <div class="weather-card">
-                <div class="city-name" id="cityName"></div>
-                <img id="weatherIcon" src="" alt="Weather icon" class="weather-icon">
+        <section id="weatherSection" class="weather-section hidden" aria-live="polite">
+            <article class="weather-card">
+                <h2 class="city-name" id="cityName"></h2>
+                <img id="weatherIcon" src="" alt="" class="weather-icon">
                 <div class="temperature" id="temperature"></div>
                 <div class="description" id="description"></div>
+
                 <div class="details-grid">
                     <div class="detail-item">
                         <span class="label">Wind Speed</span>
@@ -40,9 +53,14 @@
                         <span id="humidity" class="value"></span>
                     </div>
                 </div>
-            </div>
+            </article>
         </section>
-    </div>
+
+        <footer>
+            Weather data from
+            <a href="https://openweathermap.org/" target="_blank" rel="noreferrer">OpenWeather</a>
+        </footer>
+    </main>
 
     <script src="script.js"></script>
 </body>

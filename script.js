@@ -1,11 +1,11 @@
-const API_BASE_URL = 'https://api.openweathermap.org/data/2.5/weather';
+const WEATHER_API_ENDPOINT = '/api/weather';
 
-// DOM Elements
+const weatherForm = document.getElementById('weatherForm');
 const cityInput = document.getElementById('cityInput');
 const searchBtn = document.getElementById('searchBtn');
 const geoBtn = document.getElementById('geoBtn');
 const loading = document.getElementById('loading');
-const error = document.getElementById('error');
+const errorBox = document.getElementById('error');
 const weatherSection = document.getElementById('weatherSection');
 const cityNameEl = document.getElementById('cityName');
 const weatherIconEl = document.getElementById('weatherIcon');
@@ -14,181 +14,140 @@ const descriptionEl = document.getElementById('description');
 const windSpeedEl = document.getElementById('windSpeed');
 const humidityEl = document.getElementById('humidity');
 
-// Utility Functions
-/**
- * Show loading state
- */
-function showLoading() {
-    hideError();
-    hideWeather();
-    loading.classList.remove('hidden');
+function setLoading(isLoading) {
+    loading.classList.toggle('hidden', !isLoading);
+    weatherForm.setAttribute('aria-busy', String(isLoading));
+    searchBtn.disabled = isLoading;
+    geoBtn.disabled = isLoading;
+    cityInput.disabled = isLoading;
 }
 
-/**
- * Hide loading state
- */
-function hideLoading() {
-    loading.classList.add('hidden');
-}
-
-/**
- * Show error message
- * @param {string} message - Error message to display
- */
-function showError(message) {
-    error.textContent = message;
-    error.classList.remove('hidden');
-    hideLoading();
-    hideWeather();
-}
-
-/**
- * Hide error message
- */
 function hideError() {
-    error.classList.add('hidden');
+    errorBox.textContent = '';
+    errorBox.classList.add('hidden');
 }
 
-/**
- * Show weather section
- */
-function showWeather() {
+function showError(message) {
+    setLoading(false);
+    hideWeather();
+    errorBox.textContent = message;
+    errorBox.classList.remove('hidden');
+}
+
+function hideWeather() {
+    weatherSection.classList.add('hidden');
+}
+
+function isWeatherResponse(data) {
+    return Boolean(
+        data
+        && data.name
+        && data.sys?.country
+        && Number.isFinite(data.main?.temp)
+        && Number.isFinite(data.main?.humidity)
+        && Number.isFinite(data.wind?.speed)
+        && data.weather?.[0]?.icon
+        && data.weather?.[0]?.description
+    );
+}
+
+async function fetchWeather(params) {
+    const query = new URLSearchParams(params);
+    const response = await fetch(`${WEATHER_API_ENDPOINT}?${query.toString()}`);
+
+    let data;
+    try {
+        data = await response.json();
+    } catch {
+        throw new Error('Weather service returned an invalid response.');
+    }
+
+    if (!response.ok) {
+        throw new Error(data.error || data.message || 'Unable to fetch weather data.');
+    }
+
+    if (!isWeatherResponse(data)) {
+        throw new Error('Weather service returned incomplete data.');
+    }
+
+    return data;
+}
+
+function displayWeather(data) {
+    const weather = data.weather[0];
+
+    cityNameEl.textContent = `${data.name}, ${data.sys.country}`;
+    weatherIconEl.src = `https://openweathermap.org/img/wn/${weather.icon}@2x.png`;
+    weatherIconEl.alt = weather.description;
+    temperatureEl.textContent = `${Math.round(data.main.temp)}°C`;
+    descriptionEl.textContent = weather.description;
+    windSpeedEl.textContent = `${data.wind.speed} m/s`;
+    humidityEl.textContent = `${data.main.humidity}%`;
+
+    hideError();
+    setLoading(false);
     weatherSection.classList.remove('hidden');
 }
 
-/**
- * Hide weather section
- */
-function hideWeather() {
-    weatherSection.classList.add('hidden');
-    // Clear previous data
-    cityNameEl.textContent = '';
-    weatherIconEl.src = '';
-    temperatureEl.textContent = '';
-    descriptionEl.textContent = '';
-    windSpeedEl.textContent = '';
-    humidityEl.textContent = '';
-}
+weatherForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
 
-/**
- * Fetch weather data from API
- * @param {string|Object} query - City name or {lat, lon} object
- * @returns {Promise<Object>} Weather data or throws error
- */
-// ...WITH THIS NEW FUNCTION
-async function fetchWeather(query) {
-    // The base URL is now our own API endpoint on Vercel
-    const API_BASE_URL = '/api/weather'; 
-    let url;
-
-    if (typeof query === 'string') {
-        // Search by city name
-        url = `${API_BASE_URL}?city=${encodeURIComponent(query)}`;
-    } else {
-        // Search by lat/lon
-        url = `${API_BASE_URL}?lat=${query.lat}&lon=${query.lon}`;
-    }
-
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error('City not found or API error');
-        }
-        return await response.json();
-    } catch (err) {
-        throw new Error(err.message || 'Failed to fetch weather data');
-    }
-}
-
-/**
- * Display weather data in UI
- * @param {Object} data - Weather API response
- */
-function displayWeather(data) {
-    hideLoading();
-    hideError();
-    showWeather();
-
-    // Update elements
-    cityNameEl.textContent = data.name + ', ' + data.sys.country;
-    const iconUrl = `http://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png`;
-    weatherIconEl.src = iconUrl;
-    weatherIconEl.alt = data.weather[0].description;
-    temperatureEl.textContent = `${Math.round(data.main.temp)}°C`;
-    descriptionEl.textContent = data.weather[0].description;
-    windSpeedEl.textContent = `${data.wind.speed} m/s`;
-    humidityEl.textContent = `${data.main.humidity}%`;
-}
-
-// Event Listeners
-/**
- * Handle search button click
- */
-searchBtn.addEventListener('click', async () => {
     const city = cityInput.value.trim();
     if (!city) {
-        showError('Please enter a city name');
+        showError('Please enter a city name.');
         return;
     }
 
-    showLoading();
+    hideError();
+    hideWeather();
+    setLoading(true);
+
     try {
-        const data = await fetchWeather(city);
+        const data = await fetchWeather({ city });
         displayWeather(data);
-        cityInput.value = ''; // Clear input
-    } catch (err) {
-        showError(err.message);
+    } catch (error) {
+        showError(error.message);
     }
 });
 
-/**
- * Handle Enter key in input field
- */
-cityInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        searchBtn.click();
-    }
-});
-
-/**
- * Handle geolocation button click
- */
 geoBtn.addEventListener('click', () => {
     if (!navigator.geolocation) {
-        showError('Geolocation is not supported by your browser');
+        showError('Geolocation is not supported by this browser.');
         return;
     }
 
-    showLoading();
+    hideError();
+    hideWeather();
+    setLoading(true);
+
     navigator.geolocation.getCurrentPosition(
-        async (position) => {
-            const { latitude: lat, longitude: lon } = position.coords;
+        async ({ coords }) => {
             try {
-                const data = await fetchWeather({ lat, lon });
+                const data = await fetchWeather({
+                    lat: coords.latitude,
+                    lon: coords.longitude,
+                });
                 displayWeather(data);
-            } catch (err) {
-                showError(err.message);
+            } catch (error) {
+                showError(error.message);
             }
         },
-        (err) => {
-            hideLoading();
-            let message = 'Failed to get location: ';
-            switch (err.code) {
-                case err.PERMISSION_DENIED:
-                    message += 'Location access denied';
-                    break;
-                case err.POSITION_UNAVAILABLE:
-                    message += 'Location unavailable';
-                    break;
-                default:
-                    message += 'Unknown error';
-            }
-            showError(message);
+        (error) => {
+            const messages = {
+                [error.PERMISSION_DENIED]: 'Location access was denied.',
+                [error.POSITION_UNAVAILABLE]: 'Your location is currently unavailable.',
+                [error.TIMEOUT]: 'Location request timed out.',
+            };
+            showError(messages[error.code] || 'Unable to get your location.');
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+        {
+            enableHighAccuracy: false,
+            timeout: 10000,
+            maximumAge: 60000,
+        },
     );
 });
 
-// Initialize: Hide weather and error on load
 hideWeather();
 hideError();
+setLoading(false);
